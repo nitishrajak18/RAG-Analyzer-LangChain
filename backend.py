@@ -3,10 +3,10 @@ import warnings
 from dotenv import load_dotenv
 
 from langchain_community.document_loaders import PyPDFLoader, TextLoader
-try:
-    from langchain_community.document_loaders import UnstructuredPDFLoader  # better table extraction
-except ImportError:
-    UnstructuredPDFLoader = None
+# try:
+#     from langchain_community.document_loaders import UnstructuredPDFLoader  # better table extraction
+# except ImportError:
+#     UnstructuredPDFLoader = None
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -35,7 +35,7 @@ RETRIEVAL_K = 5
 class MultiDocRAGBot:
     def __init__(self):
         # Local embeddings (no API needed) to convert text into vectors
-        self.embeddings = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
+        self.embeddings = None
         self.vector_store = None
 
         if not GROQ_API_KEY:
@@ -60,12 +60,10 @@ class MultiDocRAGBot:
             all_documents = []
             for index, path in enumerate(file_paths, start=1):
                 try:
-                    if UnstructuredPDFLoader and path.lower().endswith(".pdf"):
-                        loader = UnstructuredPDFLoader(path)
-                    elif path.lower().endswith(".pdf"):
-                        loader = PyPDFLoader(path)
+                    if path.lower().endswith(".pdf"):
+                     loader = PyPDFLoader(path)                    
                     else:
-                        loader = TextLoader(path)
+                       loader = TextLoader(path)
                     docs = loader.load()
                 except Exception:
                     # Fallback to PyPDF if Unstructured fails
@@ -80,6 +78,10 @@ class MultiDocRAGBot:
                 chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP
             )
             texts = text_splitter.split_documents(all_documents)
+            if self.embeddings is None:
+                self.embeddings = HuggingFaceEmbeddings(
+                 model_name=EMBEDDING_MODEL
+              )
 
             self.vector_store = FAISS.from_documents(texts, self.embeddings)
             return f"✅ Index Ready: {len(file_paths)} files, {len(texts)} chunks."
